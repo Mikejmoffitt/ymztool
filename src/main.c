@@ -485,12 +485,12 @@ int main(int argc, char **argv)
 		fprintf(f_inc, "%s_FN_REG = $%02X\n", e->info.symbol_upper, e->fn_reg);
 		fprintf(f_inc, "%s_SAMPLES = $%05X\n", e->info.symbol_upper, e->length);
 		fprintf(f_inc, "%s_CHANNELS = $%05X\n", e->info.symbol_upper, e->channels-1);
-		fprintf(f_inc, "%s_START_ADDRESS = $%05X\n", e->info.symbol_upper, loop_start);
-		fprintf(f_inc, "%s_END_ADDRESS = $%05X\n", e->info.symbol_upper, loop_end);
+		fprintf(f_inc, "%s_START_ADDRESS = $%05X\n", e->info.symbol_upper, start_address);
+		fprintf(f_inc, "%s_END_ADDRESS = $%05X\n", e->info.symbol_upper, end_address);
 		if (e->info.loop)
 		{
-			fprintf(f_inc, "%s_LOOP_START_ADDRESS = $%05X\n", e->info.symbol_upper, start_address);
-			fprintf(f_inc, "%s_LOOP_END_ADDRESS = $%05X\n", e->info.symbol_upper, end_address);
+			fprintf(f_inc, "%s_LOOP_START_ADDRESS = $%05X\n", e->info.symbol_upper, loop_start);
+			fprintf(f_inc, "%s_LOOP_END_ADDRESS = $%05X\n", e->info.symbol_upper, loop_end);
 		}
 		fprintf(f_inc, "\n");
 
