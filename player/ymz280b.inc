@@ -88,7 +88,7 @@ key:			ds.b 1  ; also fn8
 tl:			ds.b 1
 pan:			ds.b 1
 start_address:		ds.b 3
-end_address:		ds.b 3
 loop_start_address:	ds.b 3
 loop_end_address:	ds.b 3
+end_address:		ds.b 3
 YMZDAT ends

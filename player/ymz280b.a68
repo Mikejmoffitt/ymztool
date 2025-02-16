@@ -155,18 +155,23 @@ ymz_dat_set_addr_sub:
 	lea	YMZ_CTRL, a1
 	bsr.w	ymz_delay_sub
 	move.l	a2, -(sp)
+
 	lea	YMZDAT.start_address(a0), a2
 	moveq	#$20, d1  ; base reg
 	bsr.b	.write_addr_subsub
-	lea	YMZDAT.end_address(a0), a2
-	moveq	#$23, d1  ; base reg
-	bsr.b	.write_addr_subsub
+
 	lea	YMZDAT.loop_start_address(a0), a2
 	moveq	#$21, d1  ; base reg
 	bsr.b	.write_addr_subsub
+
 	lea	YMZDAT.loop_end_address(a0), a2
 	moveq	#$22, d1  ; base reg
 	bsr.b	.write_addr_subsub
+
+	lea	YMZDAT.end_address(a0), a2
+	moveq	#$23, d1  ; base reg
+	bsr.b	.write_addr_subsub
+
 	move.l	(sp)+, a2
 	rts
 

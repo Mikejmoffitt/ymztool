@@ -43,6 +43,9 @@ typedef struct Info
 	// YMZ-specific data
 	YmzFmt fmt;          // Target format setting.
 	uint32_t clock;      // Clock (in Hz)
+	int tl;
+	int panpot;
+	bool loop;
 } Info;
 
 typedef struct Entry Entry;
@@ -87,6 +90,16 @@ bool conv_validate(const Conv *s)
 	if (s->info.fmt == FMT_NG)
 	{
 		fprintf(stderr, "[CONV] fmt NG!\n");
+		return false;
+	}
+	if (s->info.tl < 0 || s->info.tl > 255)
+	{
+		fprintf(stderr, "[CONV] Invalid TL $%X\n", s->info.tl);
+		return false;
+	}
+	if (s->info.panpot < 0 || s->info.panpot > 0xF)
+	{
+		fprintf(stderr, "[CONV] Invalid PANPOT $%X\n", s->info.panpot);
 		return false;
 	}
 	if (s->out[0] == '\0')
@@ -342,8 +355,18 @@ static int handler(void *user, const char *section, const char *name, const char
 	{
 		s->info.clock = strtoul(value, NULL, 0);
 	}
-
-	// stepping conversion
+	else if (strcmp("tl", name) == 0)
+	{
+		s->info.tl = strtoul(value, NULL, 0);
+	}
+	else if (strcmp("panpot", name) == 0)
+	{
+		s->info.panpot = strtoul(value, NULL, 0);
+	}
+	else if (strcmp("loop", name) == 0)
+	{
+		s->info.loop = strtoul(value, NULL, 0) ? true : false;
+	}
 
 	return 1;
 }
@@ -353,6 +376,9 @@ static void conv_init(Conv *conv)
 	memset(conv, 0, sizeof(*conv));
 	conv->info.clock = YMZ280B_CLOCK_NOMINAL;
 	conv->info.fmt = FMT_ADPCM;
+	conv->info.tl = 0xFF;
+	conv->info.panpot = 0x08;
+	conv->info.loop = false;
 }
 
 int main(int argc, char **argv)
@@ -421,11 +447,11 @@ int main(int argc, char **argv)
 	{
 		// Binary Data
 		const uint8_t reg00_bits = e->fn_reg & 0xFF;  // key on, mode bits, loop not set, high fn bit
-		const uint8_t reg01_bits = 0x80 | (e->fn_reg>>8) | (e->info.fmt << 5);  // key on, mode bits, loop not set, high fn bit
+		const uint8_t reg01_bits = 0x80 | (e->info.loop ? 0x10 : 0x00) | (e->fn_reg>>8) | (e->info.fmt << 5);  // key on, mode bits, loop not set, high fn bit
 		fputc(reg00_bits, f_bin);
 		fputc(reg01_bits, f_bin);
-		fputc(0xFF, f_bin);  // tl
-		fputc(0x08, f_bin);  // panpot
+		fputc(e->info.tl, f_bin);  // tl
+		fputc(e->info.panpot, f_bin);  // panpot
 		const uint32_t start_address = e->start_address;
 		const uint32_t end_address = e->end_address;
 		const uint32_t loop_start = e->loop_start_address;
@@ -433,15 +459,15 @@ int main(int argc, char **argv)
 		fputc((start_address>>16) & 0xFF, f_bin);
 		fputc((start_address>>8) & 0xFF, f_bin);
 		fputc(start_address & 0xFF, f_bin);
-		fputc((end_address>>16) & 0xFF, f_bin);
-		fputc((end_address>>8) & 0xFF, f_bin);
-		fputc(end_address & 0xFF, f_bin);
 		fputc((loop_start>>16) & 0xFF, f_bin);
 		fputc((loop_start>>8) & 0xFF, f_bin);
 		fputc(loop_start & 0xFF, f_bin);
 		fputc((loop_end>>16) & 0xFF, f_bin);
 		fputc((loop_end>>8) & 0xFF, f_bin);
 		fputc(loop_end & 0xFF, f_bin);
+		fputc((end_address>>16) & 0xFF, f_bin);
+		fputc((end_address>>8) & 0xFF, f_bin);
+		fputc(end_address & 0xFF, f_bin);
 
 		// Write inc entry
 		fprintf(f_inc, "; Entry $%03X \"%s\"\n", e->id, e->info.symbol);
