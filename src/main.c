@@ -9,6 +9,8 @@
 
 #define YMZ280B_CLOCK_NOMINAL 16934400
 
+#define YMZ_BLOB_ENTRY_SIZE 16
+
 // TODO: Either merge down to mono, create two separate entries for L and R, or
 //       entirely reject Stereo data. The chip has panning support, but does not
 //       really support stereo data per se.
@@ -311,12 +313,6 @@ static int handler(void *user, const char *section, const char *name, const char
 	{
 		strncpy(s->info.src, value, sizeof(s->info.src));
 		s->info.src[sizeof(s->info.src)-1] = '\0';
-#ifdef DEBUGGY
-		// TODO: Get upset if config isn't valid
-		// TODO: kick off conversion
-		printf("symbol: %s\n", s->info.symbol);
-		printf("  src = %s\n", s->info.src);
-#endif  // DEBUGGY
 		if (!conv_entry_add(s)) return 0;
 	}
 	else if (strcmp("out", name) == 0)
@@ -378,7 +374,7 @@ int main(int argc, char **argv)
 	// Now emit a pile of CHR data
 	char fname_buf[512];
 
-	// TODO: f_h, f_dat for C header and "mapping" data respectively
+	// TODO: f_h for C header
 	FILE *f_inc = NULL;
 	FILE *f_bin = NULL;
 	FILE *f_ymz = NULL;
@@ -450,6 +446,7 @@ int main(int argc, char **argv)
 		// Write inc entry
 		fprintf(f_inc, "; Entry $%03X \"%s\"\n", e->id, e->info.symbol);
 		fprintf(f_inc, "%s_INDEX = $%04X\n", e->info.symbol_upper, e->id);
+		fprintf(f_inc, "%s_BLOB_OFFS = $%04X\n", e->info.symbol_upper, e->id*YMZ_BLOB_ENTRY_SIZE);
 		fprintf(f_inc, "%s_DATA_OFFS = $%05X\n", e->info.symbol_upper, e->info.data_offs);
 		fprintf(f_inc, "%s_SAMPLING_RATE = %d\n", e->info.symbol_upper, e->info.sample_rate);
 		fprintf(f_inc, "%s_FN_REG = $%02X\n", e->info.symbol_upper, e->fn_reg);
