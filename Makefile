@@ -4,7 +4,7 @@ CP := cp
 MKDIR := mkdir
 RM := rm
 CC := gcc
-CFLAGS := -O0 -g -Wall -Isrc -Wno-unused-function
+CFLAGS := -O3 -Wall -Isrc -Wno-unused-function
 INSTALL_PREFIX := /usr/bin
 ifdef SYSTEMROOT
 	APPEXT := .exe
