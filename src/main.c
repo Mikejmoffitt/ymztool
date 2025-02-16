@@ -448,8 +448,8 @@ int main(int argc, char **argv)
 		// Binary Data
 		const uint8_t reg00_bits = e->fn_reg & 0xFF;  // key on, mode bits, loop not set, high fn bit
 		const uint8_t reg01_bits = 0x80 | (e->info.loop ? 0x10 : 0x00) | (e->fn_reg>>8) | (e->info.fmt << 5);  // key on, mode bits, loop not set, high fn bit
-		fputc(reg00_bits, f_bin);
 		fputc(reg01_bits, f_bin);
+		fputc(reg00_bits, f_bin);
 		fputc(e->info.tl, f_bin);  // tl
 		fputc(e->info.panpot, f_bin);  // panpot
 		const uint32_t start_address = e->start_address;

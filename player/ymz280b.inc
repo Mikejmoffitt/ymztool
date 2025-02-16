@@ -83,8 +83,8 @@ YMZ_DATA = YMZ_BASE + $02  ; Writing data or reading status register
 
 ; Description of binary data emitted by ymztool.
 YMZDAT struc
-fn:			ds.b 1
 key:			ds.b 1  ; also fn8
+fn:			ds.b 1
 tl:			ds.b 1
 pan:			ds.b 1
 start_address:		ds.b 3
