@@ -1,0 +1,6 @@
+src/*.swp
+*.swp
+ymztool
+ymztool.exe
+out/*
+ymztest.*
