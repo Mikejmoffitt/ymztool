@@ -1,11 +1,12 @@
 APPNAME := ymztool
 
 CP := cp
+INSTALL := install
 MKDIR := mkdir
 RM := rm
 CC := gcc
 CFLAGS := -O3 -Wall -Isrc -Wno-unused-function
-INSTALL_PREFIX := /usr/bin
+INSTALL_PREFIX := /usr/local/bin
 ifdef SYSTEMROOT
 	APPEXT := .exe
 endif
@@ -31,7 +32,7 @@ $(OBJECTS_C_DIR)/%.o: %.c $(SOURCES_H)
 	$(CC) -c $(CFLAGS) $< -o $@
 
 install: $(EXECNAME)
-	$(CP) $< $(INSTALL_PREFIX)/
+	$(INSTALL) $< $(INSTALL_PREFIX)/
 
 clean:
 	$(RM) -rf $(OBJECTS_C_DIR)
