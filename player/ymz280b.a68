@@ -59,16 +59,17 @@ ymz_stop_all:
 ; a0.l = ymzdat
 ; d0.w = channel (0 - 7)
 ymz_play_loop:
-	bsr.b	ymz_play_dat.setup_sub
+	bsr.b	ymz_play.setup_sub
 	bra.w	ymz_dat_key_on_loop_sub
 
 ; a0.l = ymzdat
 ; d0.w = channel (0 - 7)
 ymz_play:
 	bsr.b	.setup_sub
-	bra.b	ymz_dat_key_on_sub
-	rts
+	bra.w	ymz_dat_key_on_sub
 
+; Sets up d0.w to hold the offset within a register block for the channel, and
+; places YMZ_CTRL in a1 for all of the register poking subroutines.
 .setup_sub:
 	add.w	d0, d0
 	add.w	d0, d0  ; d0 = channel offset in register block
@@ -78,7 +79,6 @@ ymz_play:
 	bsr.b	ymz_dat_set_tl_sub
 	bsr.b	ymz_dat_set_pan_sub
 	bra.w	ymz_dat_set_addr_sub
-
 
 ; d0.w = channel offset
 ; a0.l = YMZDAT
