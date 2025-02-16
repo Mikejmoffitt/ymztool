@@ -160,15 +160,19 @@ ymz_dat_set_addr_sub:
 	moveq	#$20, d1  ; base reg
 	bsr.b	.write_addr_subsub
 
-	lea	YMZDAT.loop_start_address(a0), a2
+	; If the sample is not intended to loop, the loop information is not
+	; there and thus should be skipped.
+	btst	#4, YMZDAT.key(a0)
+	beq.s	+
+	lea	3(a0), a2
 	moveq	#$21, d1  ; base reg
 	bsr.b	.write_addr_subsub
 
-	lea	YMZDAT.loop_end_address(a0), a2
+	lea	3(a0), a2
 	moveq	#$22, d1  ; base reg
 	bsr.b	.write_addr_subsub
-
-	lea	YMZDAT.end_address(a0), a2
++:
+	lea	3(a0), a2
 	moveq	#$23, d1  ; base reg
 	bsr.b	.write_addr_subsub
 

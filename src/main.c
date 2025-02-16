@@ -177,17 +177,19 @@ static bool conv_entry_add(Conv *s)
 	e->length = wav.totalPCMFrameCount;
 	e->channels = wav.channels;
 
+	printf("wav rate $%d, pcm frames %d\n", e->info.sample_rate, e->length);
+
 	// YMZ-specific data is either set from the INI or calculated later.
 	// Playback information
 	const bool has_smpl_loop = wav.smpl.numSampleLoops > 0;
 	if (has_smpl_loop)
 	{
-		e->info.loop_start_pos = wav.smpl.loops[0].start * wav.channels;
-		e->info.loop_end_pos = wav.smpl.loops[0].end * wav.channels;
+		e->info.loop_start_pos = wav.smpl.loops[0].start;
+		e->info.loop_end_pos = wav.smpl.loops[0].end;
 	}
 
-	if (e->info.loop_end_pos <= 0) e->info.loop_end_pos = e->length;
 	if (e->info.loop_start_pos <= 0) e->info.loop_start_pos = 0;
+	if (e->info.loop_end_pos <= 0) e->info.loop_end_pos = e->length;
 
 	// Done with the WAV file now.
 	drwav_uninit(&wav);
@@ -313,8 +315,10 @@ static int handler(void *user, const char *section, const char *name, const char
 	// New section - copy in name
 	if (strcmp(section, s->info.symbol) != 0)
 	{
+		memset(s->info.symbol, 0, sizeof(s->info.symbol));
 		strncpy(s->info.symbol, section, sizeof(s->info.symbol));
 		s->info.symbol[sizeof(s->info.symbol)-1] = '\0';
+		memset(s->info.symbol_upper, 0, sizeof(s->info.symbol_upper));
 		for (int i = 0; i < strlen(s->info.symbol); i++)
 		{
 			s->info.symbol_upper[i] = toupper(s->info.symbol[i]);
@@ -459,12 +463,15 @@ int main(int argc, char **argv)
 		fputc((start_address>>16) & 0xFF, f_bin);
 		fputc((start_address>>8) & 0xFF, f_bin);
 		fputc(start_address & 0xFF, f_bin);
-		fputc((loop_start>>16) & 0xFF, f_bin);
-		fputc((loop_start>>8) & 0xFF, f_bin);
-		fputc(loop_start & 0xFF, f_bin);
-		fputc((loop_end>>16) & 0xFF, f_bin);
-		fputc((loop_end>>8) & 0xFF, f_bin);
-		fputc(loop_end & 0xFF, f_bin);
+		if (e->info.loop)
+		{
+			fputc((loop_start>>16) & 0xFF, f_bin);
+			fputc((loop_start>>8) & 0xFF, f_bin);
+			fputc(loop_start & 0xFF, f_bin);
+			fputc((loop_end>>16) & 0xFF, f_bin);
+			fputc((loop_end>>8) & 0xFF, f_bin);
+			fputc(loop_end & 0xFF, f_bin);
+		}
 		fputc((end_address>>16) & 0xFF, f_bin);
 		fputc((end_address>>8) & 0xFF, f_bin);
 		fputc(end_address & 0xFF, f_bin);
@@ -478,10 +485,13 @@ int main(int argc, char **argv)
 		fprintf(f_inc, "%s_FN_REG = $%02X\n", e->info.symbol_upper, e->fn_reg);
 		fprintf(f_inc, "%s_SAMPLES = $%05X\n", e->info.symbol_upper, e->length);
 		fprintf(f_inc, "%s_CHANNELS = $%05X\n", e->info.symbol_upper, e->channels-1);
-		fprintf(f_inc, "%s_LOOP_START_ADDRESS = $%05X\n", e->info.symbol_upper, start_address);
-		fprintf(f_inc, "%s_LOOP_END_ADDRESS = $%05X\n", e->info.symbol_upper, end_address);
 		fprintf(f_inc, "%s_START_ADDRESS = $%05X\n", e->info.symbol_upper, loop_start);
 		fprintf(f_inc, "%s_END_ADDRESS = $%05X\n", e->info.symbol_upper, loop_end);
+		if (e->info.loop)
+		{
+			fprintf(f_inc, "%s_LOOP_START_ADDRESS = $%05X\n", e->info.symbol_upper, start_address);
+			fprintf(f_inc, "%s_LOOP_END_ADDRESS = $%05X\n", e->info.symbol_upper, end_address);
+		}
 		fprintf(f_inc, "\n");
 
 		// Pack YMZ data

@@ -4,3 +4,4 @@ ymztool
 ymztool.exe
 out/*
 ymztest.*
+cobj/*
