@@ -404,9 +404,9 @@ int main(int argc, char **argv)
 	// Now emit a pile of CHR data
 	char fname_buf[512];
 
-	// TODO: f_h for C header
+	FILE *f_hdr = NULL;
 	FILE *f_inc = NULL;
-	FILE *f_bin = NULL;
+	FILE *f_dat = NULL;
 	FILE *f_ymz = NULL;
 
 	// YMZ binary data
@@ -420,9 +420,9 @@ int main(int argc, char **argv)
 	}
 
 	// DAT
-	snprintf(fname_buf, sizeof(fname_buf), "%s.bin", conv.out);
-	f_bin = fopen(fname_buf, "wb");
-	if (!f_bin)
+	snprintf(fname_buf, sizeof(fname_buf), "%s.dat", conv.out);
+	f_dat = fopen(fname_buf, "wb");
+	if (!f_dat)
 	{
 		fprintf(stderr, "Couldn't open %s for writing\n", fname_buf);
 		ret = -1;
@@ -439,6 +439,16 @@ int main(int argc, char **argv)
 		goto done;
 	}
 
+	// H C header
+	snprintf(fname_buf, sizeof(fname_buf), "%s.h", conv.out);
+	f_hdr = fopen(fname_buf, "wb");
+	if (!f_hdr)
+	{
+		fprintf(stderr, "Couldn't open %s for writing\n", fname_buf);
+		ret = -1;
+		goto done;
+	}
+
 	fprintf(f_inc, "; ┌────────────────────────────────────────────────────────────────────────────┐\n");
 	fprintf(f_inc, "; │                                                                            │\n");
 	fprintf(f_inc, "; │                               YMZ280B DATA INDEX                           │\n");
@@ -446,39 +456,52 @@ int main(int argc, char **argv)
 	fprintf(f_inc, "; └────────────────────────────────────────────────────────────────────────────┘\n");
 	fprintf(f_inc, "\n");
 
+	fprintf(f_hdr, "#pragma once\n");
+	fprintf(f_hdr, "// ┌───────────────────────────────────────────────────────────────────────────┐\n");
+	fprintf(f_hdr, "// │                             YMZ280B CALL OFFSETS                          │\n");
+	fprintf(f_hdr, "// └───────────────────────────────────────────────────────────────────────────┘\n");
+	fprintf(f_hdr, "\n");
+
 	Entry *e = conv.entry_head;
+
+	uint32_t blob_bytes = 0;
+
+
 	while (e)
 	{
 		// Binary Data
 		const uint8_t reg00_bits = e->fn_reg & 0xFF;  // key on, mode bits, loop not set, high fn bit
 		const uint8_t reg01_bits = 0x80 | (e->info.loop ? 0x10 : 0x00) | (e->fn_reg>>8) | (e->info.fmt << 5);  // key on, mode bits, loop not set, high fn bit
-		fputc(reg01_bits, f_bin);
-		fputc(reg00_bits, f_bin);
-		fputc(e->info.tl, f_bin);  // tl
-		fputc(e->info.panpot, f_bin);  // panpot
+
+		fputc(reg01_bits, f_dat);  // key/fn8
+		fputc(reg00_bits, f_dat);  // fn
+		fputc(e->info.tl, f_dat);  // tl
+		fputc(e->info.panpot, f_dat);  // panpot
 		const uint32_t start_address = e->start_address;
 		const uint32_t end_address = e->end_address;
 		const uint32_t loop_start = e->loop_start_address;
 		const uint32_t loop_end = e->loop_end_address;
-		fputc((start_address>>16) & 0xFF, f_bin);
-		fputc((start_address>>8) & 0xFF, f_bin);
-		fputc(start_address & 0xFF, f_bin);
-		if (e->info.loop)
-		{
-			fputc((loop_start>>16) & 0xFF, f_bin);
-			fputc((loop_start>>8) & 0xFF, f_bin);
-			fputc(loop_start & 0xFF, f_bin);
-			fputc((loop_end>>16) & 0xFF, f_bin);
-			fputc((loop_end>>8) & 0xFF, f_bin);
-			fputc(loop_end & 0xFF, f_bin);
-		}
-		fputc((end_address>>16) & 0xFF, f_bin);
-		fputc((end_address>>8) & 0xFF, f_bin);
-		fputc(end_address & 0xFF, f_bin);
+		fputc((start_address>>16) & 0xFF, f_dat);  // start 0 
+		fputc((start_address>>8) & 0xFF, f_dat);  // start 1
+		fputc(start_address & 0xFF, f_dat);  // start 2
+		// Always put loop info, even if it is derived from the start/end addresses
+		fputc((loop_start>>16) & 0xFF, f_dat);
+		fputc((loop_start>>8) & 0xFF, f_dat);
+		fputc(loop_start & 0xFF, f_dat);
+		fputc((loop_end>>16) & 0xFF, f_dat);
+		fputc((loop_end>>8) & 0xFF, f_dat);
+		fputc(loop_end & 0xFF, f_dat);
+		// end address
+		fputc((end_address>>16) & 0xFF, f_dat);
+		fputc((end_address>>8) & 0xFF, f_dat);
+		fputc(end_address & 0xFF, f_dat);
+
+		// Sixteen bytes written per blob entry.
 
 		// Write inc entry
 		fprintf(f_inc, "; Entry $%03X \"%s\"\n", e->id, e->info.symbol);
 		fprintf(f_inc, "%s_INDEX = $%04X\n", e->info.symbol_upper, e->id);
+		blob_bytes += YMZ_BLOB_ENTRY_SIZE;
 		fprintf(f_inc, "%s_BLOB_OFFS = $%04X\n", e->info.symbol_upper, e->id*YMZ_BLOB_ENTRY_SIZE);
 		fprintf(f_inc, "%s_DATA_OFFS = $%05X\n", e->info.symbol_upper, e->info.data_offs);
 		fprintf(f_inc, "%s_SAMPLING_RATE = %d\n", e->info.symbol_upper, e->info.sample_rate);
@@ -494,15 +517,47 @@ int main(int argc, char **argv)
 		}
 		fprintf(f_inc, "\n");
 
+		// Write header entry
+		fprintf(f_hdr, "#define %s_OFFS 0x%X\n", e->info.symbol_upper, e->id*YMZ_BLOB_ENTRY_SIZE);
+
+		// The header is more sparse, just referencing call IDs and predeclaring the blob.
+
 		// Pack YMZ data
 		fwrite(e->data, sizeof(uint8_t), e->data_bytes, f_ymz);
 		e = e->next;
 	}
 
+	fprintf(f_hdr, "\n");
+	fprintf(f_hdr, "// ┌───────────────────────────────────────────────────────────────────────────┐\n");
+	fprintf(f_hdr, "// │                   YMZ280B DATA BLOB FORWARD DECLARATION                   │\n");
+	fprintf(f_hdr, "// └───────────────────────────────────────────────────────────────────────────┘\n");
+	fprintf(f_hdr, "\n");
+
+	// C forward declaration of the blob.
+	if (blob_bytes > 0)
+	{
+		// Replace slashes in name with underscores to make palette name
+		char *sym_buf = malloc(strlen(conv.out)+1);
+		strcpy(sym_buf, conv.out);
+		char *sym_buf_walk = sym_buf;
+		while (*sym_buf_walk)
+		{
+			if (*sym_buf_walk == '/') *sym_buf_walk = '_';
+			sym_buf_walk++;
+		}
+
+		fprintf(f_hdr, "// YMZdat block forward declaration.\n");
+		fprintf(f_hdr, "extern const uint8_t %s_dat[0x%X];\n", sym_buf, blob_bytes);
+
+		free(sym_buf);
+	}
+	fprintf(f_hdr, "\n");
+
 done:
 	if (f_ymz) fclose(f_ymz);
-	if (f_bin) fclose(f_bin);
+	if (f_dat) fclose(f_dat);
 	if (f_inc) fclose(f_inc);
+	if (f_hdr) fclose(f_hdr);
 	conv_shutdown(&conv);
 
 	return ret;
